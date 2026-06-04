@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages (Custom Domain)
+
+on:
+  push:
+    branches:
+      - deploy
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish Blazor WebAssembly
+        run: dotnet publish -c Release --output build_output
+
+      - name: Configure for Custom Domain
+        run: |
+          # Set base href to root for custom domain
+          sed -i 's|<base href="/" />|<base href="/" />|' build_output/wwwroot/index.html
+          
+          # Create 404.html for SPA routing
+          cp build_output/wwwroot/index.html build_output/wwwroot/404.html
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: build_output/wwwroot
+          branch: gh-pages
+          clean: true
+
+      - name: Create CNAME file
+        run: |
+          echo "budget.drodrigues.dev" > build_output/wwwroot/CNAME
+          cp build_output/wwwroot/CNAME ./
