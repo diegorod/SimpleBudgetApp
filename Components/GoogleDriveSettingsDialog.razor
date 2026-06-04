@@ -1,0 +1,64 @@
+﻿@inject NavigationManager NavigationManager
+
+<MudDialog>
+    <TitleContent>Connect to Google Drive</TitleContent>
+    <DialogContent>
+        <MudStack>
+            @if(!string.IsNullOrWhiteSpace(Budget.GoogleClientId))
+            {
+                <MudAlert Icon="@Icons.Material.Filled.Warning" Severity="Severity.Warning">
+                    A Google Client ID is already configured. Connecting again will overwrite the existing Client ID and may require re-authentication.
+                </MudAlert>
+            }
+            <MudText Typo="Typo.body1" Class="mb-4">
+                To connect to Google Drive, please enter your Google OAuth Client ID.
+            </MudText>
+        
+            <MudTextField @bind-Value="ClientId"
+                          Label="Google Client ID"
+                          Variant="Variant.Outlined"
+                          Class="mb-4"
+                          Placeholder="1234567890-abc123.apps.googleusercontent.com" />
+
+            <MudText Typo="Typo.caption" Color="Color.Warning">
+                ⚠️ You can get your Client ID from the
+                <MudLink Href="https://console.cloud.google.com/" Target="_blank">Google Cloud Console</MudLink>. Make sure to create an OAuth 2.0 Client ID for a Web Application and add "@(NavigationManager.BaseUri)" as an authorized JavaScript origin.
+            </MudText>
+
+            <MudText Typo="Typo.caption" Class="mt-4">
+                The Client ID will be stored securely in your budget file.
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Save">Connect</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance DialogInstance { get; set; } = default!;
+
+    [Parameter] public Budget Budget { get; set; } = default!;
+
+    private string? ClientId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ClientId = Budget.GoogleClientId;
+    }
+
+    private void Save()
+    {
+        if (!string.IsNullOrWhiteSpace(ClientId))
+        {
+            Budget.GoogleClientId = ClientId.Trim();
+        }
+        DialogInstance.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel()
+    {
+        DialogInstance.Cancel();
+    }
+}

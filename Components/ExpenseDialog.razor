@@ -1,0 +1,33 @@
+﻿@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>@(Expense.Id == 0 ? "New Expense" : "Edit Expense")</TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" Model="Expense">
+            <MudTextField @bind-Value="Expense.Name" Label="Expense Name" Required="true" />
+            <MudNumericField @bind-Value="Expense.Amount" Label="Monthly Amount" Required="true" 
+                             Format="C2" Min="0" />
+            <MudTextField @bind-Value="Expense.Notes" Label="Notes" Lines="3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Error" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance DialogInstance { get; set; } = default!;
+
+    [Parameter] public MonthlyExpense Expense { get; set; } = new();
+
+    private MudForm? form;
+
+    private async Task Save()
+    {
+        if (form is null || !(form.IsValid)) return;
+        DialogInstance.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => DialogInstance.Close(DialogResult.Cancel());
+}

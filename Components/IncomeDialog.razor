@@ -1,0 +1,34 @@
+﻿@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>@(Income.Id == 0 ? "New Income" : "Edit Income")</TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" Model="Income">
+            <MudTextField @bind-Value="Income.Name" Label="Income Name" Required="true" />
+            <MudNumericField @bind-Value="Income.Amount" Label="Monthly Amount" Required="true" 
+                             Format="C2" Min="0" />
+            <MudTextField @bind-Value="Income.Notes" Label="Notes" Lines="3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Success" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance DialogInstance { get; set; } = default!;
+
+    [Parameter] public MonthlyIncome Income { get; set; } = new();
+
+    private MudForm? form;
+
+    private void Save()
+    {
+        if (form is null || !(form.IsValid)) return;
+
+        DialogInstance.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => DialogInstance.Close(DialogResult.Cancel());
+}

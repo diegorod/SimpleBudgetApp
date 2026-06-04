@@ -1,0 +1,95 @@
+﻿@page "/incomes"
+@inject GoogleDriveService DriveService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<AppPageTitle Title="Monthly Incomes" />
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom>Monthly Incomes</MudText>
+    
+    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" OnClick="ShowAddIncomeDialog">
+        Add Income
+    </MudButton>
+
+    <MudTable Items="@DriveService.CurrentBudget.Incomes" Hover="true" Dense="true" Class="mt-6" Striped="true" SortLabel="Sort By">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyIncome, object>(x => x.IsEnabled)">Enabled</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyIncome, object>(x => x.Name)">Name</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyIncome, object>(x => x.Amount)" InitialDirection="SortDirection.Descending">Amount</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyIncome, object>(x => x.YearlyAmount)">Yearly</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyIncome, object>(x => x.Notes)">Notes</MudTableSortLabel></MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudSwitch Value="context.IsEnabled" T="bool"
+                           Color="Color.Success"
+                           ValueChanged="async (value) => { context.IsEnabled = value; await DriveService.SaveAsync(); }" />
+            </MudTd>
+            <MudTd>@context.Name</MudTd>
+            <MudTd>
+                <span style="text-decoration: @(context.IsEnabled ? "none" : "line-through"); opacity: @(context.IsEnabled ? 1 : 0.6)">
+                    @context.Amount.ToString("C2")
+                </span>
+            </MudTd>
+            <MudTd>
+                <span style="text-decoration: @(context.IsEnabled ? "none" : "line-through"); opacity: @(context.IsEnabled ? 1 : 0.6)">
+                    @context.YearlyAmount.ToString("C2")
+                </span>
+            </MudTd>
+            <MudTd>@context.Notes</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" OnClick="() => ShowEditIncomeDialog(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteIncome(context)" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await DriveService.LoadAsync();
+        DriveService.OnBudgetChanged += StateHasChanged;
+    }
+
+    private async Task ShowAddIncomeDialog()
+    {
+        var parameters = new DialogParameters { { "Income", new MonthlyIncome() } };
+        var dialog = await DialogService.ShowAsync<IncomeDialog>("Add Income", parameters);
+        var result = await dialog.Result;
+
+        if (result?.Canceled == false)
+        {
+            var newIncome = (MonthlyIncome)parameters["Income"]!;
+            newIncome.Id = DriveService.CurrentBudget.Incomes.Count + 1;
+            DriveService.CurrentBudget.Incomes.Add(newIncome);
+            await DriveService.SaveAsync();
+        }
+    }
+
+    private async Task ShowEditIncomeDialog(MonthlyIncome income)
+    {
+        var parameters = new DialogParameters { { "Income", income } };
+        var dialog = await DialogService.ShowAsync<IncomeDialog>("Edit Income", parameters);
+        var result = await dialog.Result;
+
+        if (result?.Canceled == false)
+        {
+            await DriveService.SaveAsync();
+        }
+    }
+
+    private async Task DeleteIncome(MonthlyIncome income)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync("Delete Income",
+            $"Delete '{income.Name}'?", yesText: "Delete", cancelText: "Cancel");
+        
+        if (confirm == true)
+        {
+            DriveService.CurrentBudget.Incomes.Remove(income);
+            await DriveService.SaveAsync();
+        }
+    }
+}

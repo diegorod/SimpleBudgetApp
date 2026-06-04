@@ -1,0 +1,95 @@
+﻿@page "/expenses"
+@inject GoogleDriveService DriveService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<AppPageTitle Title="Monthly Expenses" />
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom>Monthly Expenses</MudText>
+    
+    <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Add" OnClick="ShowAddExpenseDialog">
+        Add Expense
+    </MudButton>
+
+    <MudTable Items="@DriveService.CurrentBudget.Expenses" Hover="true" Dense="true" Class="mt-6" Striped="true" SortLabel="Sort By">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyExpense, object>(x => x.IsEnabled)">Enabled</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyExpense, object>(x => x.Name)">Name</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyExpense, object>(x => x.Amount)" InitialDirection="SortDirection.Descending">Amount</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyExpense, object>(x => x.YearlyAmount)">Yearly</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MonthlyExpense, object>(x => x.Notes)">Notes</MudTableSortLabel></MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudSwitch Value="context.IsEnabled" T="bool"
+                           Color="Color.Error"
+                           ValueChanged="async (value) => { context.IsEnabled = value; await DriveService.SaveAsync(); }" />
+            </MudTd>
+            <MudTd>@context.Name</MudTd>
+            <MudTd>
+                <span style="text-decoration: @(context.IsEnabled ? "none" : "line-through"); opacity: @(context.IsEnabled ? 1 : 0.6)">
+                    @context.Amount.ToString("C2")
+                </span>
+            </MudTd>
+            <MudTd>
+                <span style="text-decoration: @(context.IsEnabled ? "none" : "line-through"); opacity: @(context.IsEnabled ? 1 : 0.6)">
+                    @context.YearlyAmount.ToString("C2")
+                </span>
+            </MudTd>
+            <MudTd>@context.Notes</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" OnClick="() => ShowEditExpenseDialog(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteExpense(context)" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await DriveService.LoadAsync();
+        DriveService.OnBudgetChanged += StateHasChanged;
+    }
+
+    private async Task ShowAddExpenseDialog()
+    {
+        var parameters = new DialogParameters { { "Expense", new MonthlyExpense() } };
+        var dialog = await DialogService.ShowAsync<ExpenseDialog>("Add Expense", parameters);
+        var result = await dialog.Result;
+
+        if (result?.Canceled == false)
+        {
+            var newExpense = (MonthlyExpense)parameters["Expense"]!;
+            newExpense.Id = DriveService.CurrentBudget.Expenses.Count + 1;
+            DriveService.CurrentBudget.Expenses.Add(newExpense);
+            await DriveService.SaveAsync();
+        }
+    }
+
+    private async Task ShowEditExpenseDialog(MonthlyExpense expense)
+    {
+        var parameters = new DialogParameters { { "Expense", expense } };
+        var dialog = await DialogService.ShowAsync<ExpenseDialog>("Edit Expense", parameters);
+        var result = await dialog.Result;
+
+        if (result?.Canceled == false)
+        {
+            await DriveService.SaveAsync();
+        }
+    }
+
+    private async Task DeleteExpense(MonthlyExpense expense)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync("Delete Expense",
+            $"Delete '{expense.Name}'?", yesText: "Delete", cancelText: "Cancel");
+        
+        if (confirm == true)
+        {
+            DriveService.CurrentBudget.Expenses.Remove(expense);
+            await DriveService.SaveAsync();
+        }
+    }
+}

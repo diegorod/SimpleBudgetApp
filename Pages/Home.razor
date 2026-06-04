@@ -1,0 +1,224 @@
+@page "/"
+@inject GoogleDriveService DriveService
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom>Budget Dashboard</MudText>
+    <MudText Typo="Typo.subtitle1" Color="Color.Primary">@budget.Name</MudText>
+
+    <!-- Main Summary Cards -->
+    <MudGrid Spacing="4" Class="mt-4">
+        <MudItem xs="12" md="3">
+            <MudPaper Class="pa-4 text-center">
+                <MudText Typo="Typo.h6">Monthly Income</MudText>
+                <MudText Typo="Typo.h3" Color="Color.Success">@budget.MonthlyIncome.ToString("C0")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudPaper Class="pa-4 text-center">
+                <MudText Typo="Typo.h6">Monthly Expenses</MudText>
+                <MudText Typo="Typo.h3" Color="Color.Error">@budget.MonthlyExpense.ToString("C0")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudPaper Class="pa-4 text-center">
+                <MudText Typo="Typo.h6">Monthly Net</MudText>
+                <MudText Typo="Typo.h3" Color="@(budget.MonthlyNet >= 0 ? Color.Success : Color.Error)">
+                    @budget.MonthlyNet.ToString("C0")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudPaper Class="pa-4 text-center">
+                <MudText Typo="Typo.h6">Expense Ratio</MudText>
+                <MudText Typo="Typo.h3">@(budget.MonthlyIncome > 0 ? (budget.MonthlyExpense / budget.MonthlyIncome * 100).ToString("0") + "%" : "0%")</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- New Daily & Yearly Stats -->
+    <MudGrid Spacing="4" Class="mt-6">
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard>
+                <MudCardContent Class="text-center">
+                    <MudText Typo="Typo.h6">Daily Expense</MudText>
+                    <MudText Typo="Typo.h4" Color="Color.Error">@budget.DailyExpense.ToString("C2")</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard>
+                <MudCardContent Class="text-center">
+                    <MudText Typo="Typo.h6">Daily Income</MudText>
+                    <MudText Typo="Typo.h4" Color="Color.Success">@budget.DailyIncome.ToString("C2")</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard>
+                <MudCardContent Class="text-center">
+                    <MudText Typo="Typo.h6">Yearly Expense</MudText>
+                    <MudText Typo="Typo.h4" Color="Color.Error">@budget.YearlyExpense.ToString("C0")</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard>
+                <MudCardContent Class="text-center">
+                    <MudText Typo="Typo.h6">Yearly Net</MudText>
+                    <MudText Typo="Typo.h4" Color="@(budget.YearlyNet >= 0 ? Color.Success : Color.Error)">
+                        @budget.YearlyNet.ToString("C0")
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Charts Section -->
+    <MudGrid Spacing="4" Class="mt-8">
+        <!-- Income vs Expenses Pie Chart -->
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Income vs Expenses</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudChart ChartType="ChartType.Pie"
+                              Width="100%" 
+                              Height="380px"
+                              ChartSeries="@GetIncomeExpensePieData().AsChartDataSet()"
+                              ChartLabels="@(new[] { "Income", "Expenses" })"
+                              ChartOptions="@incomeExpensePieOptions" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Expense Breakdown Pie Chart -->
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Expense Breakdown</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (budget.Expenses.Any(e => e.IsEnabled))
+                    {
+                        <MudChart ChartType="ChartType.Pie" 
+                                  Width="100%" 
+                                  Height="380px"
+                                  ChartSeries="@GetExpenseData().AsChartDataSet()"
+                                  ChartLabels="@GetExpenseLabels()"
+                                  ChartOptions="@expensePieOptions" />
+                    }
+                    else
+                    {
+                        <MudText>No enabled expenses to display.</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- 10-Year Savings Projection -->
+    <MudGrid Spacing="4" Class="mt-8">
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardHeader>
+                    <MudStack>
+                        <MudText Typo="Typo.h5">10-Year Compounded Savings Projection</MudText>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">
+                            Assuming @((ReturnRate*100).ToString("#"))% annual return (S&P 500 historical average)
+                        </MudText>
+                    </MudStack>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudChart ChartType="ChartType.Line" 
+                              Width="100%" 
+                              Height="420px"
+                              ChartSeries="@GetCompoundedProjectionData().AsChartDataSet()"
+                              ChartLabels="@Get10YearLabels()"
+                              ChartOptions="@projectionChartOptions" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private Budget budget => DriveService.CurrentBudget;
+
+    private readonly PieChartOptions incomeExpensePieOptions = new PieChartOptions
+    {
+        ChartPalette = new[] { "#4caf50", "#f44336" },
+        ShowLegend = false
+    };
+
+    private readonly PieChartOptions expensePieOptions = new PieChartOptions
+    {
+        ShowLegend = false
+    };
+
+    private readonly LineChartOptions projectionChartOptions = new LineChartOptions
+    {
+        YAxisFormat = "C0",
+        LineDisplayType = LineDisplayType.Line,
+        ShowLegend = false
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await DriveService.LoadAsync();
+        DriveService.OnBudgetChanged += StateHasChanged;
+    }
+
+    // Pie Chart: Income vs Expenses
+    private double[] GetIncomeExpensePieData()
+    {
+        return new double[] { (double)budget.MonthlyIncome, (double)budget.MonthlyExpense };
+    }
+
+    // Pie Chart: Expense Breakdown (only enabled)
+    private double[] GetExpenseData()
+    {
+        return budget.Expenses.Where(e => e.IsEnabled).Select(e => (double)e.Amount).ToArray();
+    }
+
+    private string[] GetExpenseLabels()
+    {
+        return budget.Expenses.Where(e => e.IsEnabled).Select(e => e.Name).ToArray();
+    }
+
+    // 10-Year Projection
+    private const double ReturnRate = 0.10; // 10% average annual return
+
+    private string[] Get10YearLabels()
+    {
+        return Enumerable.Range(0, 10)
+            .Select(i => DateTime.Now.AddYears(i).Year.ToString())
+            .ToArray();
+    }
+
+    private double[] GetCompoundedProjectionData()
+    {
+        var yearlyNet = (double)budget.YearlyNet;
+        var data = new double[10];
+
+        double balance = 0;
+        for (int year = 1; year <= 10; year++)
+        {
+            balance = (balance + yearlyNet) * (1 + ReturnRate);
+            data[year - 1] = balance;
+        }
+        return data;
+    }
+
+    private decimal GetProjectedBalance()
+    {
+        var yearlyNet = (double)budget.YearlyNet;
+        double balance = 0;
+        for (int year = 1; year <= 10; year++)
+        {
+            balance = (balance + yearlyNet) * (1 + ReturnRate);
+        }
+        return (decimal)balance;
+    }
+}

@@ -1,0 +1,257 @@
+@using System.Text.Json
+@inherits LayoutComponentBase
+@inject GoogleDriveService DriveService
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@DrawerToggle" />
+        <MudLink Href="/">
+            <MudImage Src="/favicon-96x96.png" Width="40" Alt="Simple Budget" Elevation="25" Class="pr-2" />
+        </MudLink>
+        <MudText Typo="Typo.h5">Simple Budget App</MudText>
+        <MudSpacer />
+
+        <MudHidden Breakpoint="Breakpoint.SmAndUp">
+            <!-- Options Menu Button -->
+            <MudMenu Label="Options"
+                     Icon="@Icons.Material.Filled.MoreVert"
+                     Color="Color.Inherit"
+                     AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     Class="mr-2">
+            
+                <!-- Backup -->
+                <MudMenuItem Icon="@Icons.Material.Filled.Download"
+                             OnClick="DownloadBackup">
+                    Backup
+                </MudMenuItem>
+
+                <!-- Import -->
+                <MudMenuItem Icon="@Icons.Material.Filled.Upload"
+                             OnClick="TriggerImport">
+                    Import
+                </MudMenuItem>
+
+                <!-- Google Drive -->
+                <MudDivider />
+                <MudMenuItem Icon="@(DriveService.IsAuthenticated ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CloudSync)" IconColor="@(DriveService.IsAuthenticated ? Color.Success : Color.Default)"
+                             OnClick="OpenGoogleDriveSettings">
+                    @if (DriveService.IsAuthenticated)
+                    {
+                        <span>Google Drive Connected</span>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(DriveService.CurrentBudget.GoogleClientId))
+                    {
+                        <span>Reconnect Google Drive</span>
+                    }
+                    else
+                    {
+                        <span>Connect Google Drive</span>
+                    }
+                </MudMenuItem>
+            </MudMenu>
+        </MudHidden>
+
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <!-- Backup -->
+            <MudButton StartIcon="@Icons.Material.Filled.Download"
+                         OnClick="DownloadBackup">
+                Backup
+            </MudButton>
+
+            <!-- Import -->
+            <MudButton StartIcon="@Icons.Material.Filled.Upload"
+                         OnClick="TriggerImport">
+                Import
+            </MudButton>
+
+            <!-- Google Drive -->
+            <MudButton StartIcon="@(DriveService.IsAuthenticated ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CloudSync)" IconColor="@(DriveService.IsAuthenticated ? Color.Success : Color.Default)"
+                         OnClick="OpenGoogleDriveSettings">
+                @if (DriveService.IsAuthenticated)
+                {
+                    <span>Google Drive Connected</span>
+                }
+                else if (!string.IsNullOrWhiteSpace(DriveService.CurrentBudget.GoogleClientId))
+                {
+                    <span>Reconnect Google Drive</span>
+                }
+                else
+                {
+                    <span>Connect Google Drive</span>
+                }
+            </MudButton>
+        </MudHidden>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Docked">
+        <MudNavMenu>
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+            <MudNavLink Href="incomes" Icon="@Icons.Material.Filled.AttachMoney">Incomes</MudNavLink>
+            <MudNavLink Href="expenses" Icon="@Icons.Material.Filled.MoneyOff">Expenses</MudNavLink>
+            <MudNavLink Href="notes" Icon="@Icons.Material.Filled.Note">Notes</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+
+    <InputFile id="importFileInput"
+               OnChange="HandleFileSelected"
+               hidden="true"
+               accept=".json" />
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = true;
+    private MudTheme? _theme;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _theme = new()
+        {
+            PaletteLight = _lightPalette,
+            PaletteDark = _darkPalette,
+            LayoutProperties = new LayoutProperties()
+        };
+
+        await DriveService.LoadAsync();
+        await DriveService.TryAutoConnectAsync();
+    }
+
+    private void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void DarkModeToggle()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+
+    private readonly PaletteLight _lightPalette = new()
+    {
+        Black = "#110e2d",
+        AppbarText = "#424242",
+        AppbarBackground = "rgba(255,255,255,0.8)",
+        DrawerBackground = "#ffffff",
+        GrayLight = "#e8e8e8",
+        GrayLighter = "#f9f9f9",
+    };
+
+    private readonly PaletteDark _darkPalette = new()
+    {
+        Primary = "#7e6fff",
+        Surface = "#1e1e2d",
+        Background = "#1a1a27",
+        BackgroundGray = "#151521",
+        AppbarText = "#92929f",
+        AppbarBackground = "rgba(26,26,39,0.8)",
+        DrawerBackground = "#1a1a27",
+        ActionDefault = "#74718e",
+        ActionDisabled = "#9999994d",
+        ActionDisabledBackground = "#605f6d4d",
+        TextPrimary = "#b2b0bf",
+        TextSecondary = "#92929f",
+        TextDisabled = "#ffffff33",
+        DrawerIcon = "#92929f",
+        DrawerText = "#92929f",
+        GrayLight = "#2a2833",
+        GrayLighter = "#1e1e2d",
+        Info = "#4a86ff",
+        Success = "#3dcb6c",
+        Warning = "#ffb545",
+        Error = "#ff3f5f",
+        LinesDefault = "#33323e",
+        TableLines = "#33323e",
+        Divider = "#292838",
+        OverlayLight = "#1e1e2d80",
+    };
+
+    public string DarkLightModeButtonIcon => _isDarkMode switch
+    {
+        true => Icons.Material.Rounded.AutoMode,
+        false => Icons.Material.Outlined.DarkMode,
+    };
+
+    private async Task OpenGoogleDriveSettings()
+    {
+        var parameters = new DialogParameters { { "Budget", DriveService.CurrentBudget } };
+
+        var dialog = await DialogService.ShowAsync<GoogleDriveSettingsDialog>(
+            "Google Drive Settings", parameters);
+        var result = await dialog.Result;
+
+        if (result?.Canceled == false)
+        {
+            // Try to connect using the saved Client ID
+            await DriveService.LoginAsync();
+        }
+    }
+
+    private async Task TriggerImport()
+    {
+        // This will trigger the hidden InputFile
+        await JS.InvokeVoidAsync("triggerFileInput", "importFileInput");
+    }
+
+    private async Task DownloadBackup()
+    {
+        await DriveService.DownloadBackupAsync();
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        if (!file.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Please select a valid JSON file", Severity.Error);
+            return;
+        }
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Import Backup",
+            "This will replace your current budget data. Continue?",
+            yesText: "Yes, Import",
+            cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            using var stream = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(stream);
+            stream.Position = 0;
+
+            var json = await new StreamReader(stream).ReadToEndAsync();
+            var importedBudget = JsonSerializer.Deserialize<Budget>(json);
+
+            if (importedBudget != null)
+            {
+                DriveService.CurrentBudget = importedBudget;
+
+                await DriveService.SaveAsync();
+                Snackbar.Add("✅ Budget successfully imported!", Severity.Success);
+
+                // Refresh all pages
+                DriveService.InvokeOnBudgetChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Import failed: {ex.Message}", Severity.Error);
+        }
+    }
+}
