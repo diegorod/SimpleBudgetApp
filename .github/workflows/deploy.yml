@@ -1,0 +1,40 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - deploy        # ← Changed to your deploy branch
+  workflow_dispatch:   # Allows manual trigger from GitHub
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish Blazor WebAssembly
+        run: dotnet publish -c Release -o build_output
+
+      - name: Prepare for GitHub Pages + Custom Domain
+        run: |
+          # Copy index.html to 404.html for proper SPA routing
+          cp build_output/wwwroot/index.html build_output/wwwroot/404.html
+          
+          # Create CNAME for your custom domain
+          echo "budget.drodrigues.dev" > build_output/wwwroot/CNAME
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.PAT_TOKEN }}
+          publish_dir: ./build_output/wwwroot
+          publish_branch: gh-pages
+          force_orphan: true
+          cname: budget.drodrigues.dev
